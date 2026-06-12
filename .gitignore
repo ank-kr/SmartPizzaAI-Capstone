@@ -1,0 +1,44 @@
+# Java / Spring Boot
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / React
+node_modules/
+dist/
+build/
+
+# Environment / Secrets
+.env
+*.env
+application-secret.properties
+application-secret.yml
+
+# Database / Runtime files
+*.db
+*.sqlite
+
+# Temporary
+tmp/
+temp/
