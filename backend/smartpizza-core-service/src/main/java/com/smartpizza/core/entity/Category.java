@@ -31,9 +31,12 @@ public class Category {
 
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true) 
     private List<MenuItem> menuItems = new ArrayList<>();
-
+    
+    
+//Run this method automatically before inserting a new row into the database.
+    
     @PrePersist
     public void onCreate() {
         this.active = true;

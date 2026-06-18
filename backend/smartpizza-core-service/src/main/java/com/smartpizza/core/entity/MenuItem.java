@@ -52,13 +52,13 @@ public class MenuItem {
 
     private LocalDateTime updatedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)   //many menu items can belongs to single category
     @JoinColumn(name = "category_id")
     private Category category;
 
-    @PrePersist
+    @PrePersist  //Before a new menu item is inserted into DB, Hibernate automatically calls onCreate().
     public void onCreate() {
-        this.available = true;
+        this.available = true; //by default make the added item available that is true whenever added
         this.rating = this.rating == null ? 4.5 : this.rating;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();

@@ -17,144 +17,199 @@ import com.smartpizza.core.repository.OrderRepository;
 import com.smartpizza.core.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
 
-    private final PaymentRepository paymentRepository;
-    private final OrderRepository orderRepository;
-    private final DeliveryService deliveryService;
+	private final PaymentRepository paymentRepository;
+	private final OrderRepository orderRepository;
+	private final DeliveryService deliveryService;
 
-    public PaymentResponse payOrder(Long orderId, PaymentRequest request) {
-        validateOrderId(orderId);
+	public PaymentResponse payOrder(Long orderId, PaymentRequest request) {
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+		// Order id is mandatory for payment processing.
+		validateOrderId(orderId);
 
-        validateOrderForPayment(order);
+		log.info("Starting payment process for orderId={}", orderId);
 
-        PaymentGateway paymentGateway = resolvePaymentGateway(request);
-        String paymentMethod = resolvePaymentMethod(request);
+		// Fetch order before payment.
+		Order order = orderRepository.findById(orderId).orElseThrow(() -> {
+			log.warn("Payment failed because order was not found. orderId={}", orderId);
+			return new RuntimeException("Order not found with id: " + orderId);
+		});
 
-        Payment payment = Payment.builder()
-                .orderId(order.getId())
-                .userId(order.getUserId())
-                .paymentGateway(paymentGateway)
-                .gatewayOrderId(generateDummyGatewayOrderId(order.getId()))
-                .gatewayPaymentId(generateDummyGatewayPaymentId(order.getId()))
-                .amount(order.getFinalAmount())
-                .currency("INR")
-                .transactionStatus(TransactionStatus.SUCCESS)
-                .paymentMethod(paymentMethod)
-                .paidAt(LocalDateTime.now())
-                .build();
+		// Validate order state before allowing payment.
+		validateOrderForPayment(order);
 
-        Payment savedPayment = paymentRepository.save(payment);
+		// Resolve payment inputs or fallback to default (dummy implementation).
+		PaymentGateway paymentGateway = resolvePaymentGateway(request);
+		String paymentMethod = resolvePaymentMethod(request);
 
-        order.setPaymentStatus(PaymentStatus.PAID);
-        order.setOrderStatus(OrderStatus.CONFIRMED);
-        orderRepository.save(order);
+		log.info("Payment details resolved. orderId={}, userId={}, gateway={}, method={}", order.getId(),
+				order.getUserId(), paymentGateway, paymentMethod);
 
-        tryAutoAssignDelivery(order.getId());
+		// Create payment record (dummy gateway simulation).
+		Payment payment = Payment.builder().orderId(order.getId()).userId(order.getUserId())
+				.paymentGateway(paymentGateway)
 
-        return mapToPaymentResponse(savedPayment, "Payment completed successfully");
-    }
+				// Simulated gateway identifiers for demo.
+				.gatewayOrderId(generateDummyGatewayOrderId(order.getId()))
+				.gatewayPaymentId(generateDummyGatewayPaymentId(order.getId()))
 
-    public List<PaymentResponse> getPaymentsByOrderId(Long orderId) {
-        validateOrderId(orderId);
+				.amount(order.getFinalAmount()).currency("INR").transactionStatus(TransactionStatus.SUCCESS)
+				.paymentMethod(paymentMethod).paidAt(LocalDateTime.now()).build();
 
-        return paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId)
-                .stream()
-                .map(payment -> mapToPaymentResponse(payment, "Payment record fetched successfully"))
-                .toList();
-    }
+		Payment savedPayment = paymentRepository.save(payment);
 
-    public List<PaymentResponse> getPaymentsByUserId(Long userId) {
-        validateUserId(userId);
+		log.info("Payment record saved successfully. paymentId={}, orderId={}, userId={}, amount={}, status={}",
+				savedPayment.getId(), savedPayment.getOrderId(), savedPayment.getUserId(), savedPayment.getAmount(),
+				savedPayment.getTransactionStatus());
 
-        return paymentRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(payment -> mapToPaymentResponse(payment, "Payment record fetched successfully"))
-                .toList();
-    }
+		// Update order lifecycle after successful payment.
+		order.setPaymentStatus(PaymentStatus.PAID);
+		order.setOrderStatus(OrderStatus.CONFIRMED);
+		orderRepository.save(order);
 
-    private void tryAutoAssignDelivery(Long orderId) {
-        try {
-            deliveryService.assignDeliveryPartner(orderId);
-        } catch (RuntimeException exception) {
-            System.out.println("Delivery auto-assignment skipped for order id "
-                    + orderId
-                    + ". Reason: "
-                    + exception.getMessage());
-        }
-    }
+		log.info("Order status updated after payment. orderId={}, paymentStatus={}, orderStatus={}", order.getId(),
+				order.getPaymentStatus(), order.getOrderStatus());
 
-    private void validateOrderId(Long orderId) {
-        if (orderId == null) {
-            throw new RuntimeException("Order id is required");
-        }
-    }
+		// Trigger delivery assignment after payment confirmation.
+		tryAutoAssignDelivery(order.getId());
 
-    private void validateUserId(Long userId) {
-        if (userId == null) {
-            throw new RuntimeException("User id is required");
-        }
-    }
+		return mapToPaymentResponse(savedPayment, "Payment completed successfully");
+	}
 
-    private void validateOrderForPayment(Order order) {
-        if (order.getPaymentStatus() == PaymentStatus.PAID) {
-            throw new RuntimeException("Order is already paid");
-        }
+	public List<PaymentResponse> getPaymentsByOrderId(Long orderId) {
 
-        if (order.getOrderStatus() == OrderStatus.CANCELLED) {
-            throw new RuntimeException("Cancelled order cannot be paid");
-        }
+		validateOrderId(orderId);
 
-        if (order.getFinalAmount() == null) {
-            throw new RuntimeException("Order final amount is missing");
-        }
-    }
+		log.info("Fetching payment records for orderId={}", orderId);
 
-    private PaymentGateway resolvePaymentGateway(PaymentRequest request) {
-        if (request == null || request.getPaymentGateway() == null) {
-            return PaymentGateway.DUMMY;
-        }
+		// Fetch all payment records for a given order (latest first).
+		List<PaymentResponse> payments = paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId).stream()
+				.map(payment -> mapToPaymentResponse(payment, "Payment record fetched successfully")).toList();
 
-        return request.getPaymentGateway();
-    }
+		log.info("Payment records fetched successfully for orderId={}, count={}", orderId, payments.size());
 
-    private String resolvePaymentMethod(PaymentRequest request) {
-        if (request == null || request.getPaymentMethod() == null || request.getPaymentMethod().trim().isEmpty()) {
-            return "DUMMY";
-        }
+		return payments;
+	}
 
-        return request.getPaymentMethod().trim().toUpperCase();
-    }
+	public List<PaymentResponse> getPaymentsByUserId(Long userId) {
 
-    private String generateDummyGatewayOrderId(Long orderId) {
-        return "DUMMY_ORDER_" + orderId + "_" + System.currentTimeMillis();
-    }
+		validateUserId(userId);
 
-    private String generateDummyGatewayPaymentId(Long orderId) {
-        return "DUMMY_PAYMENT_" + orderId + "_" + System.currentTimeMillis();
-    }
+		log.info("Fetching payment history for userId={}", userId);
 
-    private PaymentResponse mapToPaymentResponse(Payment payment, String message) {
-        return PaymentResponse.builder()
-                .paymentId(payment.getId())
-                .orderId(payment.getOrderId())
-                .userId(payment.getUserId())
-                .paymentGateway(payment.getPaymentGateway())
-                .gatewayOrderId(payment.getGatewayOrderId())
-                .gatewayPaymentId(payment.getGatewayPaymentId())
-                .amount(payment.getAmount())
-                .currency(payment.getCurrency())
-                .transactionStatus(payment.getTransactionStatus())
-                .paymentMethod(payment.getPaymentMethod())
-                .paidAt(payment.getPaidAt())
-                .message(message)
-                .build();
-    }
+		// Fetch all payment history for a user.
+		List<PaymentResponse> payments = paymentRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+				.map(payment -> mapToPaymentResponse(payment, "Payment record fetched successfully")).toList();
+
+		log.info("Payment history fetched successfully for userId={}, count={}", userId, payments.size());
+
+		return payments;
+	}
+
+	private void tryAutoAssignDelivery(Long orderId) {
+		try {
+			// Attempt automatic delivery assignment after payment.
+			deliveryService.assignDeliveryPartner(orderId);
+
+			log.info("Delivery auto-assignment triggered successfully for orderId={}", orderId);
+		} catch (RuntimeException exception) {
+
+			// Do not fail payment flow if delivery assignment fails.
+			log.warn("Delivery auto-assignment skipped for orderId={}. Reason={}", orderId, exception.getMessage());
+		}
+	}
+
+	private void validateOrderId(Long orderId) {
+		if (orderId == null) {
+			log.warn("Payment operation failed because orderId is null");
+			throw new RuntimeException("Order id is required");
+		}
+	}
+
+	private void validateUserId(Long userId) {
+		if (userId == null) {
+			log.warn("Payment operation failed because userId is null");
+			throw new RuntimeException("User id is required");
+		}
+	}
+
+	private void validateOrderForPayment(Order order) {
+
+		// Prevent duplicate payment.
+		if (order.getPaymentStatus() == PaymentStatus.PAID) {
+			log.warn("Payment rejected because order is already paid. orderId={}", order.getId());
+			throw new RuntimeException("Order is already paid");
+		}
+
+		// Cancelled orders should not proceed with payment.
+		if (order.getOrderStatus() == OrderStatus.CANCELLED) {
+			log.warn("Payment rejected because order is cancelled. orderId={}", order.getId());
+			throw new RuntimeException("Cancelled order cannot be paid");
+		}
+
+		// Ensure amount is present before payment.
+		if (order.getFinalAmount() == null) {
+			log.warn("Payment rejected because final amount is missing. orderId={}", order.getId());
+			throw new RuntimeException("Order final amount is missing");
+		}
+	}
+
+	private PaymentGateway resolvePaymentGateway(PaymentRequest request) {
+
+		// Default to DUMMY gateway if not provided (for demo use case).
+		if (request == null || request.getPaymentGateway() == null) {
+			log.debug("Payment gateway not provided. Falling back to DUMMY gateway.");
+			return PaymentGateway.DUMMY;
+		}
+
+		return request.getPaymentGateway();
+	}
+
+	private String resolvePaymentMethod(PaymentRequest request) {
+
+		// Default payment method if not provided.
+		if (request == null || request.getPaymentMethod() == null || request.getPaymentMethod().trim().isEmpty()) {
+			log.debug("Payment method not provided. Falling back to DUMMY method.");
+			return "DUMMY";
+		}
+
+		return request.getPaymentMethod().trim().toUpperCase();
+	}
+
+	private String generateDummyGatewayOrderId(Long orderId) {
+
+		// Simulate external payment gateway order id.
+		String gatewayOrderId = "DUMMY_ORDER_" + orderId + "_" + System.currentTimeMillis();
+
+		log.debug("Dummy gateway order id generated for orderId={}", orderId);
+
+		return gatewayOrderId;
+	}
+
+	private String generateDummyGatewayPaymentId(Long orderId) {
+
+		// Simulate external payment gateway payment id.
+		String gatewayPaymentId = "DUMMY_PAYMENT_" + orderId + "_" + System.currentTimeMillis();
+
+		log.debug("Dummy gateway payment id generated for orderId={}", orderId);
+
+		return gatewayPaymentId;
+	}
+
+	private PaymentResponse mapToPaymentResponse(Payment payment, String message) {
+
+		// Entity -> DTO mapping for payment response.
+		return PaymentResponse.builder().paymentId(payment.getId()).orderId(payment.getOrderId())
+				.userId(payment.getUserId()).paymentGateway(payment.getPaymentGateway())
+				.gatewayOrderId(payment.getGatewayOrderId()).gatewayPaymentId(payment.getGatewayPaymentId())
+				.amount(payment.getAmount()).currency(payment.getCurrency())
+				.transactionStatus(payment.getTransactionStatus()).paymentMethod(payment.getPaymentMethod())
+				.paidAt(payment.getPaidAt()).message(message).build();
+	}
 }
-

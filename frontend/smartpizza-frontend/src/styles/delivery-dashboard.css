@@ -1,0 +1,366 @@
+.delivery-page {
+  min-height: calc(100vh - 64px);
+  padding: 30px;
+  background:
+    radial-gradient(circle at top left, rgba(252, 191, 73, 0.22), transparent 34%),
+    radial-gradient(circle at top right, rgba(214, 40, 40, 0.12), transparent 28%),
+    #fff8ef;
+}
+
+.delivery-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  background: linear-gradient(135deg, #d62828, #f77f00);
+  color: white;
+  border-radius: 28px;
+  padding: 36px;
+  box-shadow: 0 18px 42px rgba(214, 40, 40, 0.25);
+}
+
+.delivery-tag {
+  display: inline-block;
+  margin: 0 0 12px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.delivery-hero h1 {
+  margin: 0 0 10px;
+  font-size: 40px;
+}
+
+.delivery-hero p {
+  margin: 0;
+  font-size: 16px;
+  opacity: 0.95;
+}
+
+.delivery-hero-icon {
+  width: 100px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 56px;
+  flex-shrink: 0;
+}
+
+.delivery-search-card {
+  margin-top: 24px;
+  background: white;
+  border: 1px solid #f1dcc2;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 14px 32px rgba(50, 30, 10, 0.09);
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+}
+
+.delivery-search-card h2 {
+  margin: 0 0 6px;
+  color: #d62828;
+}
+
+.delivery-search-card p {
+  margin: 0;
+  color: #666;
+}
+
+.delivery-search-row {
+  display: grid;
+  grid-template-columns: 220px 160px;
+  gap: 12px;
+}
+
+.delivery-search-row input {
+  height: 48px;
+  border: 1px solid #e5cdae;
+  border-radius: 14px;
+  padding: 0 14px;
+  outline: none;
+  background: #fffdf9;
+  font-size: 15px;
+}
+
+.delivery-search-row button {
+  border: none;
+  border-radius: 14px;
+  background: #d62828;
+  color: white;
+  font-weight: 900;
+}
+
+.delivery-search-row button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.delivery-layout {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.delivery-card {
+  background: white;
+  border: 1px solid #f1dcc2;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 14px 32px rgba(50, 30, 10, 0.09);
+}
+
+.delivery-card h2 {
+  margin-top: 0;
+  color: #d62828;
+}
+
+.delivery-status-badge {
+  display: inline-block;
+  background: #fff0d8;
+  color: #9b4c00;
+  padding: 9px 14px;
+  border-radius: 999px;
+  font-weight: 900;
+  margin-bottom: 20px;
+}
+
+.delivery-steps {
+  display: grid;
+  gap: 18px;
+}
+
+.delivery-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  opacity: 0.45;
+}
+
+.delivery-step.active {
+  opacity: 1;
+}
+
+.delivery-step span {
+  width: 34px;
+  height: 34px;
+  background: #f1dcc2;
+  color: #9b4c00;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.delivery-step.active span {
+  background: #d62828;
+  color: white;
+}
+
+.delivery-step h3 {
+  margin: 0 0 4px;
+  color: #222;
+}
+
+.delivery-step p {
+  margin: 0;
+  color: #666;
+}
+
+.delivery-action-grid {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.delivery-action-grid button,
+.simulate-btn {
+  border: none;
+  border-radius: 14px;
+  background: #d62828;
+  color: white;
+  padding: 12px;
+  font-weight: 900;
+}
+
+.delivery-action-grid button:disabled,
+.simulate-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.simulate-btn {
+  width: 100%;
+  margin-top: 14px;
+  background: #f77f00;
+}
+
+.delivered-note {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #e7f8ec;
+  color: #137b32;
+  border: 1px solid #b8e8c5;
+  font-weight: 900;
+}
+
+.delivery-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 13px 0;
+  border-bottom: 1px solid #f1dcc2;
+}
+
+.delivery-info-row span {
+  color: #666;
+  font-weight: 800;
+}
+
+.delivery-info-row strong {
+  color: #222;
+}
+
+.delivery-address-box {
+  margin-top: 18px;
+  background: #fff8ef;
+  border: 1px solid #f1dcc2;
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.delivery-address-box h3 {
+  margin: 0 0 8px;
+}
+
+.delivery-address-box p {
+  margin: 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+@media (max-width: 950px) {
+  .delivery-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .delivery-search-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .delivery-search-row {
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+
+  .delivery-search-row button {
+    height: 46px;
+  }
+
+  .delivery-action-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .delivery-page {
+    padding: 18px;
+  }
+
+  .delivery-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 28px;
+  }
+
+  .delivery-hero h1 {
+    font-size: 30px;
+  }
+
+  .delivery-info-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+.delivery-user-info {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.delivery-user-info span {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.no-active-delivery {
+  margin-top: 24px;
+}
+
+.no-active-delivery p {
+  color: #666;
+  line-height: 1.5;
+}
+
+.active-deliveries-card {
+  margin-top: 24px;
+}
+
+.active-delivery-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.active-delivery-item {
+  border: 1px solid #f1dcc2;
+  background: #fff8ef;
+  color: #9b4c00;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-weight: 900;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.active-delivery-item span {
+  color: #222;
+}
+
+.active-delivery-item strong {
+  color: #9b4c00;
+}
+
+.active-delivery-item.selected {
+  background: #d62828;
+  color: white;
+  border-color: #d62828;
+}
+
+.active-delivery-item.selected span,
+.active-delivery-item.selected strong {
+  color: white;
+}

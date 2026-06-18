@@ -3,7 +3,6 @@ package com.smartpizza.core.controller;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/delivery")
-@CrossOrigin(origins = "*")
 public class DeliveryController {
 
     private final DeliveryService deliveryService;
@@ -39,6 +37,14 @@ public class DeliveryController {
     @GetMapping("/partners")
     public ResponseEntity<List<DeliveryPartnerResponse>> getAllDeliveryPartners() {
         List<DeliveryPartnerResponse> response = deliveryService.getAllDeliveryPartners();
+        return ResponseEntity.ok(response);
+    }
+    
+    @GetMapping("/partner/user/{userId}/active")
+    public ResponseEntity<List<DeliveryResponse>> getActiveDeliveriesByPartnerUserId(
+            @PathVariable Long userId
+    ) {
+        List<DeliveryResponse> response = deliveryService.getActiveDeliveriesByPartnerUserId(userId);
         return ResponseEntity.ok(response);
     }
 

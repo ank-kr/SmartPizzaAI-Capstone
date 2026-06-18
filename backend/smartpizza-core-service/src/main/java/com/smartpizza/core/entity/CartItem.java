@@ -20,7 +20,7 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
+@Entity                           //Entity tells jpa that this class should be stored as database table
 @Table(name = "cart_items")
 @Getter
 @Setter
@@ -30,15 +30,15 @@ import java.time.LocalDateTime;
 public class CartItem {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY) 
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cart_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)               //many cart items can belong to one cart
+    @JoinColumn(name = "cart_id", nullable = false)  //create foreign key column named cart_id in cart_item table.
     private Cart cart;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "menu_item_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)  //Dont load the cart immediately, means only load the cart when the user asses the cart item 
+    @JoinColumn(name = "menu_item_id", nullable = false) //many cust can have same menu items
     private MenuItem menuItem;
 
     private String itemName;

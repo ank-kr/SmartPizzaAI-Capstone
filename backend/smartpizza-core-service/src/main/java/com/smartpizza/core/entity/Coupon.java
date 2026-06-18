@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
 @Table(name = "coupons")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor  //For JPA/Hibernate entities, a no-argument constructor is required, creates constructor with no args
 @AllArgsConstructor
 @Builder
 public class Coupon {

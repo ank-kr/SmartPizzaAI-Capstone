@@ -16,7 +16,9 @@ import com.smartpizza.analytics.dto.CoreOrderResponse;
 import com.smartpizza.analytics.dto.RecommendationResponse;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RecommendationService {
@@ -26,10 +28,13 @@ public class RecommendationService {
 	public List<RecommendationResponse> getPersonalizedRecommendations(Long userId) {
 		validateUserId(userId);
 
+		log.info("Generating personalized recommendations for userId={}", userId);
+
 		List<CoreMenuItemResponse> menuItems = coreServiceClient.getAllMenuItems();
 		List<CoreOrderResponse> userOrders = coreServiceClient.getOrdersByUserId(userId);
 
 		if (isEmpty(userOrders)) {
+			log.warn("No order history found for userId={}. Falling back to trending recommendations", userId);
 			return getTrendingRecommendations();
 		}
 
@@ -39,10 +44,12 @@ public class RecommendationService {
 		String favoriteCategory = findFavoriteCategory(categoryFrequencyMap);
 
 		if (favoriteCategory == null) {
+			log.warn("Favorite category could not be resolved for userId={}. Falling back to trending recommendations",
+					userId);
 			return getTrendingRecommendations();
 		}
 
-		return menuItems.stream().filter(this::isAvailable)
+		List<RecommendationResponse> recommendations = menuItems.stream().filter(this::isAvailable)
 				.filter(item -> favoriteCategory.equalsIgnoreCase(item.getCategoryName()))
 				.sorted(Comparator.comparingDouble(this::getSafeRating).reversed()).limit(5)
 				.map(item -> RecommendationResponse.builder().recommendationType("PERSONALIZED").itemId(item.getId())
@@ -50,31 +57,46 @@ public class RecommendationService {
 						.reason("Recommended because you frequently order from " + favoriteCategory + " category")
 						.score(92.0).build())
 				.toList();
+
+		log.info("Personalized recommendations generated. userId={}, favoriteCategory={}, count={}", userId,
+				favoriteCategory, recommendations.size());
+
+		return recommendations;
 	}
 
 	public List<RecommendationResponse> getTrendingRecommendations() {
+		log.info("Generating trending recommendations");
+
 		List<CoreOrderResponse> allOrders = coreServiceClient.getAllOrders();
 		List<CoreMenuItemResponse> menuItems = coreServiceClient.getAllMenuItems();
 
 		Map<Long, Long> itemQuantityMap = buildItemQuantityMap(allOrders);
 
 		if (itemQuantityMap.isEmpty()) {
+			log.warn("No order quantity data found. Falling back to highest rated recommendations");
 			return getHighestRatedRecommendations(menuItems);
 		}
 
 		Map<Long, CoreMenuItemResponse> menuItemMap = buildMenuItemMap(menuItems);
 
-		return itemQuantityMap.entrySet().stream().sorted(Map.Entry.<Long, Long>comparingByValue().reversed()).limit(5)
+		List<RecommendationResponse> recommendations = itemQuantityMap.entrySet().stream()
+				.sorted(Map.Entry.<Long, Long>comparingByValue().reversed()).limit(5)
 				.map(entry -> buildTrendingRecommendation(entry, menuItemMap)).toList();
+
+		log.info("Trending recommendations generated successfully. count={}", recommendations.size());
+
+		return recommendations;
 	}
 
 	public List<ComboSuggestionResponse> getComboSuggestions(Long userId) {
 		validateUserId(userId);
 
+		log.info("Generating combo suggestions for userId={}", userId);
+
 		List<CoreOrderResponse> userOrders = coreServiceClient.getOrdersByUserId(userId);
 
 		if (!isEmpty(userOrders)) {
-			return List.of(
+			List<ComboSuggestionResponse> combos = List.of(
 					ComboSuggestionResponse.builder().comboName("Smart Repeat Combo")
 							.items(List.of("Favorite Pizza", "Garlic Bread", "Cold Beverage"))
 							.estimatedPrice(BigDecimal.valueOf(599))
@@ -85,9 +107,15 @@ public class RecommendationService {
 							.estimatedPrice(BigDecimal.valueOf(799))
 							.reason("Recommended because your order history shows complete meal preference").score(88.0)
 							.build());
+
+			log.info("Personalized combo suggestions generated. userId={}, count={}", userId, combos.size());
+
+			return combos;
 		}
 
-		return List.of(
+		log.warn("No order history found for combo suggestions. Returning starter combos. userId={}", userId);
+
+		List<ComboSuggestionResponse> combos = List.of(
 				ComboSuggestionResponse.builder().comboName("Starter Combo")
 						.items(List.of("Margherita Pizza", "Garlic Bread", "Cold Beverage"))
 						.estimatedPrice(BigDecimal.valueOf(499)).reason("Best combo for first-time customers")
@@ -97,20 +125,32 @@ public class RecommendationService {
 						.items(List.of("Cheese Burst Pizza", "Cheesy Dip", "Cold Beverage"))
 						.estimatedPrice(BigDecimal.valueOf(599)).reason("Popular beginner-friendly combo").score(82.0)
 						.build());
+
+		log.info("Starter combo suggestions generated. userId={}, count={}", userId, combos.size());
+
+		return combos;
 	}
 
 	public List<RecommendationResponse> getWeatherRecommendations(Long userId, String weather) {
 		validateUserId(userId);
 
-		List<CoreMenuItemResponse> menuItems = coreServiceClient.getAllMenuItems();
 		String normalizedWeather = normalizeWeather(weather);
 
-		return menuItems.stream().filter(this::isAvailable).filter(item -> isWeatherMatch(item, normalizedWeather))
-				.limit(5)
+		log.info("Generating weather-based recommendations. userId={}, weather={}", userId, normalizedWeather);
+
+		List<CoreMenuItemResponse> menuItems = coreServiceClient.getAllMenuItems();
+
+		List<RecommendationResponse> recommendations = menuItems.stream().filter(this::isAvailable)
+				.filter(item -> isWeatherMatch(item, normalizedWeather)).limit(5)
 				.map(item -> RecommendationResponse.builder().recommendationType("WEATHER_BASED").itemId(item.getId())
 						.itemName(item.getName()).categoryName(item.getCategoryName()).price(item.getPrice())
 						.reason(buildWeatherReason(normalizedWeather)).score(89.0).build())
 				.toList();
+
+		log.info("Weather-based recommendations generated. userId={}, weather={}, count={}", userId, normalizedWeather,
+				recommendations.size());
+
+		return recommendations;
 	}
 
 	private Map<String, Integer> buildCategoryFrequencyMap(List<CoreOrderResponse> userOrders,
@@ -119,6 +159,8 @@ public class RecommendationService {
 
 		for (CoreOrderResponse order : userOrders) {
 			if (order.getItems() == null) {
+				log.debug("Skipping order while building category frequency because items are null. orderId={}",
+						order.getOrderId());
 				continue;
 			}
 
@@ -126,6 +168,8 @@ public class RecommendationService {
 				CoreMenuItemResponse menuItem = menuItemMap.get(orderItem.getMenuItemId());
 
 				if (menuItem == null || menuItem.getCategoryName() == null) {
+					log.debug("Skipping order item because menu item/category is missing. menuItemId={}",
+							orderItem.getMenuItemId());
 					continue;
 				}
 
@@ -135,23 +179,32 @@ public class RecommendationService {
 			}
 		}
 
+		log.debug("Category frequency map built. categoryCount={}", categoryFrequencyMap.size());
+
 		return categoryFrequencyMap;
 	}
 
 	private String findFavoriteCategory(Map<String, Integer> categoryFrequencyMap) {
-		return categoryFrequencyMap.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
-				.orElse(null);
+		String favoriteCategory = categoryFrequencyMap.entrySet().stream().max(Map.Entry.comparingByValue())
+				.map(Map.Entry::getKey).orElse(null);
+
+		log.debug("Favorite category resolved. favoriteCategory={}", favoriteCategory);
+
+		return favoriteCategory;
 	}
 
 	private Map<Long, Long> buildItemQuantityMap(List<CoreOrderResponse> orders) {
 		Map<Long, Long> itemQuantityMap = new HashMap<>();
 
 		if (isEmpty(orders)) {
+			log.debug("No orders available for item quantity map generation");
 			return itemQuantityMap;
 		}
 
 		for (CoreOrderResponse order : orders) {
 			if (order.getItems() == null) {
+				log.debug("Skipping order while building item quantity map because items are null. orderId={}",
+						order.getOrderId());
 				continue;
 			}
 
@@ -159,6 +212,7 @@ public class RecommendationService {
 				Long menuItemId = orderItem.getMenuItemId();
 
 				if (menuItemId == null) {
+					log.debug("Skipping order item because menuItemId is null");
 					continue;
 				}
 
@@ -168,17 +222,23 @@ public class RecommendationService {
 			}
 		}
 
+		log.debug("Item quantity map built. itemCount={}", itemQuantityMap.size());
+
 		return itemQuantityMap;
 	}
 
 	private List<RecommendationResponse> getHighestRatedRecommendations(List<CoreMenuItemResponse> menuItems) {
-		return menuItems.stream().filter(this::isAvailable)
+		List<RecommendationResponse> recommendations = menuItems.stream().filter(this::isAvailable)
 				.sorted(Comparator.comparingDouble(this::getSafeRating).reversed()).limit(5)
 				.map(item -> RecommendationResponse.builder().recommendationType("TRENDING").itemId(item.getId())
 						.itemName(item.getName()).categoryName(item.getCategoryName()).price(item.getPrice())
 						.reason("Recommended because this is one of the highest rated available menu items").score(85.0)
 						.build())
 				.toList();
+
+		log.info("Highest rated recommendations generated successfully. count={}", recommendations.size());
+
+		return recommendations;
 	}
 
 	private RecommendationResponse buildTrendingRecommendation(Map.Entry<Long, Long> entry,
@@ -188,6 +248,9 @@ public class RecommendationService {
 		String itemName = item == null ? "Menu Item " + entry.getKey() : item.getName();
 		String categoryName = item == null ? null : item.getCategoryName();
 		BigDecimal price = item == null ? BigDecimal.ZERO : item.getPrice();
+
+		log.debug("Building trending recommendation. menuItemId={}, itemName={}, quantity={}", entry.getKey(), itemName,
+				entry.getValue());
 
 		return RecommendationResponse.builder().recommendationType("TRENDING").itemId(entry.getKey()).itemName(itemName)
 				.categoryName(categoryName).price(price)
@@ -235,6 +298,7 @@ public class RecommendationService {
 		Map<Long, CoreMenuItemResponse> menuItemMap = new HashMap<>();
 
 		if (menuItems == null) {
+			log.debug("Menu item list is null while building menu item map");
 			return menuItemMap;
 		}
 
@@ -243,6 +307,8 @@ public class RecommendationService {
 				menuItemMap.put(item.getId(), item);
 			}
 		}
+
+		log.debug("Menu item map built. itemCount={}", menuItemMap.size());
 
 		return menuItemMap;
 	}
@@ -277,6 +343,7 @@ public class RecommendationService {
 
 	private void validateUserId(Long userId) {
 		if (userId == null) {
+			log.warn("Recommendation generation failed because userId is null");
 			throw new RuntimeException("User id is required");
 		}
 	}

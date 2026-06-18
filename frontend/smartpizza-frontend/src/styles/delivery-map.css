@@ -1,0 +1,342 @@
+.delivery-map-card {
+  background: white;
+  border: 1px solid #f1dcc2;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 14px 32px rgba(50, 30, 10, 0.09);
+  margin-bottom: 24px;
+}
+
+.delivery-map-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.delivery-map-subtitle {
+  margin: 0 0 5px;
+  color: #f77f00;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.delivery-map-header h2 {
+  margin: 0 0 6px;
+  color: #d62828;
+}
+
+.delivery-map-header p {
+  margin: 0;
+  color: #666;
+}
+
+.delivery-map-status {
+  background: #fff0d8;
+  color: #9b4c00;
+  padding: 9px 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.delivery-map-container {
+  height: 380px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid #f1dcc2;
+}
+
+.leaflet-delivery-map {
+  width: 100%;
+  height: 100%;
+}
+
+.custom-map-marker {
+  background: transparent;
+  border: none;
+}
+
+.pickup-marker,
+.delivery-marker,
+.drop-marker {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 23px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  border: 2px solid white;
+}
+
+.pickup-marker {
+  background: #d62828;
+}
+
+.delivery-marker {
+  background: #f77f00;
+  animation: deliveryPulse 1.8s ease-in-out infinite;
+}
+
+.drop-marker {
+  background: #168a2f;
+}
+
+@keyframes deliveryPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 8px 20px rgba(247, 127, 0, 0.25);
+  }
+
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 10px 28px rgba(247, 127, 0, 0.45);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 8px 20px rgba(247, 127, 0, 0.25);
+  }
+}
+
+.delivery-map-summary {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.delivery-map-summary div {
+  background: #fff8ef;
+  border: 1px solid #f1dcc2;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.delivery-map-summary span {
+  display: block;
+  color: #666;
+  font-size: 13px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.delivery-map-summary strong {
+  color: #d62828;
+}
+
+@media (max-width: 800px) {
+  .delivery-map-header {
+    flex-direction: column;
+  }
+
+  .delivery-map-container {
+    height: 320px;
+  }
+
+  .delivery-map-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+.compact-map-card {
+  margin-bottom: 0;
+  padding: 18px;
+}
+
+.compact-map-card .delivery-map-header {
+  margin-bottom: 14px;
+}
+
+.compact-map-card .delivery-map-header h2 {
+  font-size: 24px;
+}
+
+.compact-map-card .delivery-map-header p {
+  display: none;
+}
+
+.compact-map-card .delivery-map-container {
+  height: 260px;
+}
+
+.compact-map-card .delivery-map-summary {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.compact-map-card .delivery-map-summary div {
+  padding: 11px 13px;
+}
+
+/* Prevent Leaflet map from overlapping sticky navbar */
+.leaflet-container {
+  z-index: 1;
+}
+
+.leaflet-pane {
+  z-index: 1;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 5;
+}
+
+/* ==============================
+   Compact Map For Tracking Grid
+   ============================== */
+
+.compact-map-card {
+  height: 100%;
+  min-height: 420px;
+  margin-bottom: 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.compact-map-card .delivery-map-header {
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.compact-map-card .delivery-map-header h2 {
+  font-size: 24px;
+}
+
+.compact-map-card .delivery-map-header p {
+  display: none;
+}
+
+.compact-map-card .delivery-map-container {
+  height: 260px;
+  min-height: 260px;
+  border-radius: 18px;
+  flex-shrink: 0;
+}
+
+.compact-map-card .delivery-map-summary {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.compact-map-card .delivery-map-summary div {
+  padding: 11px 12px;
+}
+
+.compact-map-card .delivery-map-summary span {
+  font-size: 12px;
+}
+
+.compact-map-card .delivery-map-summary strong {
+  font-size: 14px;
+}
+
+/* Leaflet should never overlap sticky navbar */
+.leaflet-container {
+  z-index: 1;
+}
+
+.leaflet-pane {
+  z-index: 1;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 5;
+}
+
+@media (max-width: 1050px) {
+  .compact-map-card {
+    min-height: auto;
+  }
+
+  .compact-map-card .delivery-map-container {
+    height: 300px;
+  }
+
+  .compact-map-card .delivery-map-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==============================
+   Compact Map Final Size Fix
+   ============================== */
+
+.compact-map-card {
+  margin-bottom: 0;
+  padding: 20px;
+}
+
+.compact-map-card .delivery-map-header {
+  margin-bottom: 14px;
+}
+
+.compact-map-card .delivery-map-header h2 {
+  font-size: 26px;
+  margin-bottom: 0;
+}
+
+.compact-map-card .delivery-map-header p {
+  display: none;
+}
+
+.compact-map-card .delivery-map-container {
+  height: 260px;
+  min-height: 260px;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.compact-map-card .delivery-map-summary {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.compact-map-card .delivery-map-summary div {
+  padding: 12px 14px;
+}
+
+.compact-map-card .delivery-map-summary span {
+  font-size: 13px;
+}
+
+.compact-map-card .delivery-map-summary strong {
+  font-size: 15px;
+}
+
+/* Leaflet should stay behind navbar */
+.leaflet-container {
+  z-index: 1;
+}
+
+.leaflet-pane {
+  z-index: 1;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 5;
+}
+
+@media (max-width: 1050px) {
+  .compact-map-card .delivery-map-container {
+    height: 300px;
+  }
+
+  .compact-map-card .delivery-map-summary {
+    grid-template-columns: 1fr;
+  }
+}

@@ -22,15 +22,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "carts")
+@Table(name = "carts")  //table name 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Cart {
+	
+	
 
-    @Id
+    @Id  //primary key 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -38,10 +40,11 @@ public class Cart {
      * User is managed by auth-service.
      * So in core-service, we store only userId instead of mapping User entity.
      */
-    @Column(nullable = false, unique = true)
+    
+    @Column(nullable = false, unique = true)  //unique = true, ensures one active cart per user.
     private Long userId;
 
-    @Column(nullable = false)
+    @Column(nullable = false)  //nullable = false means this column cannot contain a null value
     private BigDecimal totalAmount;
 
     private LocalDateTime createdAt;
@@ -49,28 +52,36 @@ public class Cart {
     private LocalDateTime updatedAt;
 
     /*
-     * One cart can contain many cart items.
+     * One cart can contain many cart items.(one to many relationship)
      * If cart is deleted, related cart items should also be deleted.
      */
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)   //orphanRemoval = true removes cart items from the database
     @Builder.Default
     private List<CartItem> cartItems = new ArrayList<>();
 
-    @PrePersist
+    
+
+     /*
+     * @PrePersist (initialized before inserting a new row)Initializes default values before the cart is persisted.
+     * This prevents null amount/list issues during cart creation.
+     */
+
+    
+    @PrePersist  
     public void onCreate() {
         if (this.totalAmount == null) {
-            this.totalAmount = BigDecimal.ZERO;
+            this.totalAmount = BigDecimal.ZERO;   //if total amt is not set initailize it to 0
         }
 
         if (this.cartItems == null) {
-            this.cartItems = new ArrayList<>();
+            this.cartItems = new ArrayList<>();  // if the list of cart item is null, create an empty list
         }
 
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
-    @PreUpdate
+    @PreUpdate  //initialized before updating a new row (update the updated at timestamp)
     public void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }

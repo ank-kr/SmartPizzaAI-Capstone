@@ -1,17 +1,24 @@
 package com.smartpizza.auth.controller;
 
+import java.util.Map;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.smartpizza.auth.dto.AuthResponse;
 import com.smartpizza.auth.dto.LoginRequest;
 import com.smartpizza.auth.dto.RegisterRequest;
 import com.smartpizza.auth.service.AuthService;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final AuthService authService;
@@ -29,5 +36,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+    
+    @GetMapping("/check-email")
+    public ResponseEntity<Map<String, Boolean>> checkEmail(@RequestParam String email) {
+        boolean exists = authService.emailExists(email);
+        return ResponseEntity.ok(Map.of("exists", exists));
     }
 }

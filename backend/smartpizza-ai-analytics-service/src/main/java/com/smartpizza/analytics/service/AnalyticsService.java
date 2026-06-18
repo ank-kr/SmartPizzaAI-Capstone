@@ -17,143 +17,146 @@ import com.smartpizza.analytics.dto.DeliveryPerformanceResponse;
 import com.smartpizza.analytics.dto.TopItemResponse;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AnalyticsService {
 
-    private final CoreServiceClient coreServiceClient;
+	private final CoreServiceClient coreServiceClient;
 
-    public AnalyticsSummaryResponse getSummary() {
-        List<CoreOrderResponse> orders = coreServiceClient.getAllOrders();
+	public AnalyticsSummaryResponse getSummary() {
+		log.info("Generating analytics summary");
 
-        long totalOrders = orders.size();
+		List<CoreOrderResponse> orders = coreServiceClient.getAllOrders();
 
-        long paidOrders = orders.stream()
-                .filter(order -> "PAID".equalsIgnoreCase(order.getPaymentStatus()))
-                .count();
+		if (orders == null || orders.isEmpty()) {
+			log.warn("No orders found while generating analytics summary");
+		}
 
-        long deliveredOrders = orders.stream()
-                .filter(order -> "DELIVERED".equalsIgnoreCase(order.getOrderStatus()))
-                .count();
+		long totalOrders = orders.size();
 
-        long pendingOrders = orders.stream()
-                .filter(order -> !"DELIVERED".equalsIgnoreCase(order.getOrderStatus())
-                        && !"CANCELLED".equalsIgnoreCase(order.getOrderStatus()))
-                .count();
+		long paidOrders = orders.stream().filter(order -> "PAID".equalsIgnoreCase(order.getPaymentStatus())).count();
 
-        BigDecimal totalRevenue = orders.stream()
-                .filter(order -> "PAID".equalsIgnoreCase(order.getPaymentStatus()))
-                .map(CoreOrderResponse::getFinalAmount)
-                .filter(amount -> amount != null)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+		long deliveredOrders = orders.stream().filter(order -> "DELIVERED".equalsIgnoreCase(order.getOrderStatus()))
+				.count();
 
-        BigDecimal averageOrderValue = BigDecimal.ZERO;
+		long pendingOrders = orders.stream().filter(order -> !"DELIVERED".equalsIgnoreCase(order.getOrderStatus())
+				&& !"CANCELLED".equalsIgnoreCase(order.getOrderStatus())).count();
 
-        if (paidOrders > 0) {
-            averageOrderValue = totalRevenue.divide(BigDecimal.valueOf(paidOrders), 2, RoundingMode.HALF_UP);
-        }
+		BigDecimal totalRevenue = orders.stream().filter(order -> "PAID".equalsIgnoreCase(order.getPaymentStatus()))
+				.map(CoreOrderResponse::getFinalAmount).filter(amount -> amount != null)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return AnalyticsSummaryResponse.builder()
-                .totalOrders(totalOrders)
-                .paidOrders(paidOrders)
-                .deliveredOrders(deliveredOrders)
-                .pendingOrders(pendingOrders)
-                .totalRevenue(totalRevenue)
-                .averageOrderValue(averageOrderValue)
-                .build();
-    }
+		BigDecimal averageOrderValue = BigDecimal.ZERO;
 
-    public List<TopItemResponse> getTopItems() {
-        List<CoreOrderResponse> orders = coreServiceClient.getAllOrders();
+		if (paidOrders > 0) {
+			averageOrderValue = totalRevenue.divide(BigDecimal.valueOf(paidOrders), 2, RoundingMode.HALF_UP);
+		}
 
-        Map<Long, TopItemAccumulator> accumulatorMap = new HashMap<>();
+		log.info(
+				"Analytics summary generated. totalOrders={}, paidOrders={}, deliveredOrders={}, pendingOrders={}, totalRevenue={}, averageOrderValue={}",
+				totalOrders, paidOrders, deliveredOrders, pendingOrders, totalRevenue, averageOrderValue);
 
-        for (CoreOrderResponse order : orders) {
-            if (order.getItems() == null) {
-                continue;
-            }
+		return AnalyticsSummaryResponse.builder().totalOrders(totalOrders).paidOrders(paidOrders)
+				.deliveredOrders(deliveredOrders).pendingOrders(pendingOrders).totalRevenue(totalRevenue)
+				.averageOrderValue(averageOrderValue).build();
+	}
 
-            for (CoreOrderItemResponse item : order.getItems()) {
-                TopItemAccumulator accumulator = accumulatorMap.getOrDefault(
-                        item.getMenuItemId(),
-                        new TopItemAccumulator(item.getMenuItemId(), item.getItemName())
-                );
+	public List<TopItemResponse> getTopItems() {
+		log.info("Generating top selling items analytics");
 
-                accumulator.totalQuantitySold += item.getQuantity();
-                accumulator.totalRevenue = accumulator.totalRevenue.add(item.getSubtotal());
+		List<CoreOrderResponse> orders = coreServiceClient.getAllOrders();
 
-                accumulatorMap.put(item.getMenuItemId(), accumulator);
-            }
-        }
+		if (orders == null || orders.isEmpty()) {
+			log.warn("No orders found while generating top selling items");
+		}
 
-        return accumulatorMap.values()
-                .stream()
-                .sorted((first, second) -> Long.compare(second.totalQuantitySold, first.totalQuantitySold))
-                .limit(5)
-                .map(accumulator -> TopItemResponse.builder()
-                        .menuItemId(accumulator.menuItemId)
-                        .itemName(accumulator.itemName)
-                        .totalQuantitySold(accumulator.totalQuantitySold)
-                        .totalRevenue(accumulator.totalRevenue)
-                        .build())
-                .toList();
-    }
+		Map<Long, TopItemAccumulator> accumulatorMap = new HashMap<>();
 
-    public DeliveryPerformanceResponse getDeliveryPerformance() {
-        List<DeliveryPartnerResponse> partners = coreServiceClient.getAllDeliveryPartners();
+		for (CoreOrderResponse order : orders) {
+			if (order.getItems() == null) {
+				log.debug("Skipping order because item list is null. orderId={}", order.getOrderId());
+				continue;
+			}
 
-        long totalPartners = partners.size();
+			for (CoreOrderItemResponse item : order.getItems()) {
+				TopItemAccumulator accumulator = accumulatorMap.getOrDefault(item.getMenuItemId(),
+						new TopItemAccumulator(item.getMenuItemId(), item.getItemName()));
 
-        long availablePartners = partners.stream()
-                .filter(partner -> "AVAILABLE".equalsIgnoreCase(partner.getPartnerStatus()))
-                .count();
+				accumulator.totalQuantitySold += item.getQuantity();
+				accumulator.totalRevenue = accumulator.totalRevenue.add(item.getSubtotal());
 
-        long busyPartners = partners.stream()
-                .filter(partner -> "BUSY".equalsIgnoreCase(partner.getPartnerStatus()))
-                .count();
+				accumulatorMap.put(item.getMenuItemId(), accumulator);
+			}
+		}
 
-        long offlinePartners = partners.stream()
-                .filter(partner -> "OFFLINE".equalsIgnoreCase(partner.getPartnerStatus()))
-                .count();
+		List<TopItemResponse> topItems = accumulatorMap.values().stream()
+				.sorted((first, second) -> Long.compare(second.totalQuantitySold, first.totalQuantitySold)).limit(5)
+				.map(accumulator -> TopItemResponse.builder().menuItemId(accumulator.menuItemId)
+						.itemName(accumulator.itemName).totalQuantitySold(accumulator.totalQuantitySold)
+						.totalRevenue(accumulator.totalRevenue).build())
+				.toList();
 
-        int totalActiveDeliveries = partners.stream()
-                .map(DeliveryPartnerResponse::getActiveDeliveryCount)
-                .filter(count -> count != null)
-                .reduce(0, Integer::sum);
+		log.info("Top selling items generated successfully. count={}", topItems.size());
 
-        double averageRating = partners.stream()
-                .map(DeliveryPartnerResponse::getRating)
-                .filter(rating -> rating != null)
-                .mapToDouble(Double::doubleValue)
-                .average()
-                .orElse(0.0);
+		return topItems;
+	}
 
-        return DeliveryPerformanceResponse.builder()
-                .totalPartners(totalPartners)
-                .availablePartners(availablePartners)
-                .busyPartners(busyPartners)
-                .offlinePartners(offlinePartners)
-                .totalActiveDeliveries(totalActiveDeliveries)
-                .averageRating(Math.round(averageRating * 100.0) / 100.0)
-                .build();
-    }
+	public DeliveryPerformanceResponse getDeliveryPerformance() {
+		log.info("Generating delivery partner performance analytics");
 
-    private static class TopItemAccumulator {
+		List<DeliveryPartnerResponse> partners = coreServiceClient.getAllDeliveryPartners();
 
-        private final Long menuItemId;
+		if (partners == null || partners.isEmpty()) {
+			log.warn("No delivery partners found while generating delivery performance analytics");
+		}
 
-        private final String itemName;
+		long totalPartners = partners.size();
 
-        private Long totalQuantitySold;
+		long availablePartners = partners.stream()
+				.filter(partner -> "AVAILABLE".equalsIgnoreCase(partner.getPartnerStatus())).count();
 
-        private BigDecimal totalRevenue;
+		long busyPartners = partners.stream().filter(partner -> "BUSY".equalsIgnoreCase(partner.getPartnerStatus()))
+				.count();
 
-        private TopItemAccumulator(Long menuItemId, String itemName) {
-            this.menuItemId = menuItemId;
-            this.itemName = itemName;
-            this.totalQuantitySold = 0L;
-            this.totalRevenue = BigDecimal.ZERO;
-        }
-    }
+		long offlinePartners = partners.stream()
+				.filter(partner -> "OFFLINE".equalsIgnoreCase(partner.getPartnerStatus())).count();
+
+		int totalActiveDeliveries = partners.stream().map(DeliveryPartnerResponse::getActiveDeliveryCount)
+				.filter(count -> count != null).reduce(0, Integer::sum);
+
+		double averageRating = partners.stream().map(DeliveryPartnerResponse::getRating)
+				.filter(rating -> rating != null).mapToDouble(Double::doubleValue).average().orElse(0.0);
+
+		double roundedAverageRating = Math.round(averageRating * 100.0) / 100.0;
+
+		log.info(
+				"Delivery performance generated. totalPartners={}, availablePartners={}, busyPartners={}, offlinePartners={}, totalActiveDeliveries={}, averageRating={}",
+				totalPartners, availablePartners, busyPartners, offlinePartners, totalActiveDeliveries,
+				roundedAverageRating);
+
+		return DeliveryPerformanceResponse.builder().totalPartners(totalPartners).availablePartners(availablePartners)
+				.busyPartners(busyPartners).offlinePartners(offlinePartners)
+				.totalActiveDeliveries(totalActiveDeliveries).averageRating(roundedAverageRating).build();
+	}
+
+	private static class TopItemAccumulator {
+
+		private final Long menuItemId;
+
+		private final String itemName;
+
+		private Long totalQuantitySold;
+
+		private BigDecimal totalRevenue;
+
+		private TopItemAccumulator(Long menuItemId, String itemName) {
+			this.menuItemId = menuItemId;
+			this.itemName = itemName;
+			this.totalQuantitySold = 0L;
+			this.totalRevenue = BigDecimal.ZERO;
+		}
+	}
 }

@@ -63,9 +63,9 @@ public class DeliveryPartner {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    public void onCreate() {
+    public void onCreate() {    //hibernatea call this before inserting new object to db
         if (this.partnerStatus == null) {
-            this.partnerStatus = PartnerStatus.AVAILABLE;
+            this.partnerStatus = PartnerStatus.AVAILABLE;  //if no one set the delivery status then make them available
         }
 
         if (this.activeDeliveryCount == null) {
@@ -80,7 +80,11 @@ public class DeliveryPartner {
         this.updatedAt = LocalDateTime.now();
     }
 
-    @PreUpdate
+//@PreUpdate is used here to automatically update the updatedAt
+  //field whenever an existing DeliveryPartner record is modified.
+    
+    
+    @PreUpdate  
     public void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }

@@ -1,5 +1,9 @@
 package com.smartpizza.core.service;
 
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
 import com.smartpizza.core.dto.CategoryRequest;
 import com.smartpizza.core.dto.CategoryResponse;
 import com.smartpizza.core.dto.MenuItemRequest;
@@ -8,119 +12,161 @@ import com.smartpizza.core.entity.Category;
 import com.smartpizza.core.entity.MenuItem;
 import com.smartpizza.core.repository.CategoryRepository;
 import com.smartpizza.core.repository.MenuItemRepository;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
-import java.util.List;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MenuService {
 
-    private final CategoryRepository categoryRepository;
+	// repository responsible for category CRUD operation
+	private final CategoryRepository categoryRepository;
 
-    private final MenuItemRepository menuItemRepository;
+	// repository responsible for menuitem crud operation
+	private final MenuItemRepository menuItemRepository;
 
-    public CategoryResponse addCategory(CategoryRequest request) {
+	public CategoryResponse addCategory(CategoryRequest request) {
 
-        if (categoryRepository.existsByNameIgnoreCase(request.getName())) {
-            throw new RuntimeException("Category already exists with name: " + request.getName());
-        }
+		log.info("Creating category. name={}", request.getName());
 
-        Category category = Category.builder()
-                .name(request.getName())
-                .description(request.getDescription())
-                .active(true)
-                .build();
+		// Prevent duplicate category names (case-insensitive).
+		if (categoryRepository.existsByNameIgnoreCase(request.getName())) {
+			log.warn("Category creation failed because category already exists. name={}", request.getName());
+			throw new RuntimeException("Category already exists with name: " + request.getName());
+		}
 
-        Category savedCategory = categoryRepository.save(category);
+		// Create new category with active status enabled by default.
+		Category category = Category.builder().name(request.getName()).description(request.getDescription())
+				.active(true).build();
 
-        return mapCategoryToResponse(savedCategory);
-    }
+		Category savedCategory = categoryRepository.save(category);
 
-    public List<CategoryResponse> getAllActiveCategories() {
-        return categoryRepository.findByActiveTrue()
-                .stream()
-                .map(this::mapCategoryToResponse)
-                .toList();
-    }
+		log.info("Category created successfully. categoryId={}, name={}, active={}", savedCategory.getId(),
+				savedCategory.getName(), savedCategory.getActive());
 
-    public MenuItemResponse addMenuItem(MenuItemRequest request) {
+		return mapCategoryToResponse(savedCategory);
+	}
 
-        Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found with id: " + request.getCategoryId()));
+	public List<CategoryResponse> getAllActiveCategories() {
 
-        MenuItem menuItem = MenuItem.builder()
-                .name(request.getName())
-                .description(request.getDescription())
-                .price(request.getPrice())
-                .imageUrl(request.getImageUrl())
-                .size(request.getSize())
-                .crustType(request.getCrustType())
-                .spiceLevel(request.getSpiceLevel())
-                .veg(request.getVeg())
-                .available(request.getAvailable() == null ? true : request.getAvailable())
-                .rating(request.getRating() == null ? 4.5 : request.getRating())
-                .category(category)
-                .build();
+		log.info("Fetching all active categories");
 
-        MenuItem savedMenuItem = menuItemRepository.save(menuItem);
+		// Fetch only active categories for menu display.
+		List<CategoryResponse> activeCategories = categoryRepository.findByActiveTrue().stream()
+				.map(this::mapCategoryToResponse).toList();
 
-        return mapMenuItemToResponse(savedMenuItem);
-    }
+		log.info("Active categories fetched successfully. count={}", activeCategories.size());
 
-    public List<MenuItemResponse> getAllAvailableMenuItems() {
-        return menuItemRepository.findByAvailableTrue()
-                .stream()
-                .map(this::mapMenuItemToResponse)
-                .toList();
-    }
+		return activeCategories;
+	}
 
-    public MenuItemResponse getMenuItemById(Long id) {
-        MenuItem menuItem = menuItemRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Menu item not found with id: " + id));
+	public MenuItemResponse addMenuItem(MenuItemRequest request) {
 
-        return mapMenuItemToResponse(menuItem);
-    }
+		log.info("Creating menu item. name={}, categoryId={}", request.getName(), request.getCategoryId());
 
-    public List<MenuItemResponse> getMenuItemsByCategory(Long categoryId) {
-        return menuItemRepository.findByCategoryIdAndAvailableTrue(categoryId)
-                .stream()
-                .map(this::mapMenuItemToResponse)
-                .toList();
-    }
+		// Category must exist before creating a menu item.
+		Category category = categoryRepository.findById(request.getCategoryId()).orElseThrow(() -> {
+			log.warn("Menu item creation failed because category was not found. categoryId={}",
+					request.getCategoryId());
+			return new RuntimeException("Category not found with id: " + request.getCategoryId());
+		});
 
-    public List<MenuItemResponse> getMenuItemsByVegType(Boolean veg) {
-        return menuItemRepository.findByVegAndAvailableTrue(veg)
-                .stream()
-                .map(this::mapMenuItemToResponse)
-                .toList();
-    }
+		// Map request -> entity with default values for optional fields.
+		MenuItem menuItem = MenuItem.builder().name(request.getName()).description(request.getDescription())
+				.price(request.getPrice()).imageUrl(request.getImageUrl()).size(request.getSize())
+				.crustType(request.getCrustType()).spiceLevel(request.getSpiceLevel()).veg(request.getVeg())
 
-    private CategoryResponse mapCategoryToResponse(Category category) {
-        return CategoryResponse.builder()
-                .id(category.getId())
-                .name(category.getName())
-                .description(category.getDescription())
-                .active(category.getActive())
-                .build();
-    }
+				// Default availability = true if not provided.
+				.available(request.getAvailable() == null ? true : request.getAvailable())
 
-    private MenuItemResponse mapMenuItemToResponse(MenuItem menuItem) {
-        return MenuItemResponse.builder()
-                .id(menuItem.getId())
-                .name(menuItem.getName())
-                .description(menuItem.getDescription())
-                .price(menuItem.getPrice())
-                .imageUrl(menuItem.getImageUrl())
-                .size(menuItem.getSize())
-                .crustType(menuItem.getCrustType())
-                .spiceLevel(menuItem.getSpiceLevel())
-                .veg(menuItem.getVeg())
-                .available(menuItem.getAvailable())
-                .rating(menuItem.getRating())
-                .categoryId(menuItem.getCategory().getId())
-                .categoryName(menuItem.getCategory().getName())
-                .build();
-    }
+				// Default rating used for newly added items.
+				.rating(request.getRating() == null ? 4.5 : request.getRating())
+
+				// Link menu item to category.
+				.category(category).build();
+
+		MenuItem savedMenuItem = menuItemRepository.save(menuItem);
+
+		log.info("Menu item created successfully. menuItemId={}, name={}, categoryId={}, available={}",
+				savedMenuItem.getId(), savedMenuItem.getName(), category.getId(), savedMenuItem.getAvailable());
+
+		return mapMenuItemToResponse(savedMenuItem);
+	}
+
+	public List<MenuItemResponse> getAllAvailableMenuItems() {
+
+		log.info("Fetching all available menu items");
+
+		// Fetch only menu items available for ordering.
+		List<MenuItemResponse> availableMenuItems = menuItemRepository.findByAvailableTrue().stream()
+				.map(this::mapMenuItemToResponse).toList();
+
+		log.info("Available menu items fetched successfully. count={}", availableMenuItems.size());
+
+		return availableMenuItems;
+	}
+
+	public MenuItemResponse getMenuItemById(Long id) {
+
+		log.info("Fetching menu item by id={}", id);
+
+		// Fetch specific menu item or throw if not found.
+		MenuItem menuItem = menuItemRepository.findById(id).orElseThrow(() -> {
+			log.warn("Menu item not found. menuItemId={}", id);
+			return new RuntimeException("Menu item not found with id: " + id);
+		});
+
+		log.info("Menu item fetched successfully. menuItemId={}, name={}", menuItem.getId(), menuItem.getName());
+
+		return mapMenuItemToResponse(menuItem);
+	}
+
+	public List<MenuItemResponse> getMenuItemsByCategory(Long categoryId) {
+
+		log.info("Fetching available menu items by categoryId={}", categoryId);
+
+		// Filter menu by category and availability.
+		List<MenuItemResponse> menuItems = menuItemRepository.findByCategoryIdAndAvailableTrue(categoryId).stream()
+				.map(this::mapMenuItemToResponse).toList();
+
+		log.info("Available menu items fetched by category successfully. categoryId={}, count={}", categoryId,
+				menuItems.size());
+
+		return menuItems;
+	}
+
+	public List<MenuItemResponse> getMenuItemsByVegType(Boolean veg) {
+
+		log.info("Fetching available menu items by vegType={}", veg);
+
+		// Filter menu based on veg/non-veg type and availability.
+		List<MenuItemResponse> menuItems = menuItemRepository.findByVegAndAvailableTrue(veg).stream()
+				.map(this::mapMenuItemToResponse).toList();
+
+		log.info("Available menu items fetched by veg type successfully. vegType={}, count={}", veg, menuItems.size());
+
+		return menuItems;
+	}
+
+	private CategoryResponse mapCategoryToResponse(Category category) {
+
+		// Entity -> DTO mapping for category response.
+		return CategoryResponse.builder().id(category.getId()).name(category.getName())
+				.description(category.getDescription()).active(category.getActive()).build();
+	}
+
+	private MenuItemResponse mapMenuItemToResponse(MenuItem menuItem) {
+
+		// Entity -> DTO mapping for menu item including category details for frontend
+		// display.
+		return MenuItemResponse.builder().id(menuItem.getId()).name(menuItem.getName())
+				.description(menuItem.getDescription()).price(menuItem.getPrice()).imageUrl(menuItem.getImageUrl())
+				.size(menuItem.getSize()).crustType(menuItem.getCrustType()).spiceLevel(menuItem.getSpiceLevel())
+				.veg(menuItem.getVeg()).available(menuItem.getAvailable()).rating(menuItem.getRating())
+
+				// Include category details to avoid extra API call from frontend.
+				.categoryId(menuItem.getCategory().getId()).categoryName(menuItem.getCategory().getName()).build();
+	}
 }
