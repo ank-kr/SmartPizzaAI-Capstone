@@ -13,6 +13,8 @@ import com.smartpizza.core.enums.OrderStatus;
 import com.smartpizza.core.enums.PaymentGateway;
 import com.smartpizza.core.enums.PaymentStatus;
 import com.smartpizza.core.enums.TransactionStatus;
+import com.smartpizza.core.event.PaymentCompletedEvent;
+import com.smartpizza.core.kafka.KafkaEventProducer;
 import com.smartpizza.core.repository.OrderRepository;
 import com.smartpizza.core.repository.PaymentRepository;
 
@@ -27,6 +29,7 @@ public class PaymentService {
 	private final PaymentRepository paymentRepository;
 	private final OrderRepository orderRepository;
 	private final DeliveryService deliveryService;
+	private final KafkaEventProducer kafkaEventProducer;
 
 	public PaymentResponse payOrder(Long orderId, PaymentRequest request) {
 
@@ -72,6 +75,16 @@ public class PaymentService {
 		order.setPaymentStatus(PaymentStatus.PAID);
 		order.setOrderStatus(OrderStatus.CONFIRMED);
 		orderRepository.save(order);
+
+		PaymentCompletedEvent paymentCompletedEvent = PaymentCompletedEvent.builder().paymentId(savedPayment.getId())
+				.orderId(order.getId()).userId(order.getUserId()).amount(savedPayment.getAmount())
+				.currency(savedPayment.getCurrency()).paymentGateway(savedPayment.getPaymentGateway().name())
+				.paymentMethod(savedPayment.getPaymentMethod())
+				.transactionStatus(savedPayment.getTransactionStatus().name())
+				.orderStatus(order.getOrderStatus().name()).paymentStatus(order.getPaymentStatus().name())
+				.paidAt(savedPayment.getPaidAt()).build();
+
+		kafkaEventProducer.publishPaymentCompletedEvent(paymentCompletedEvent);
 
 		log.info("Order status updated after payment. orderId={}, paymentStatus={}, orderStatus={}", order.getId(),
 				order.getPaymentStatus(), order.getOrderStatus());
