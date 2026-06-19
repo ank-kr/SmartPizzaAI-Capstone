@@ -19,6 +19,10 @@ import AdminDashboard from "./pages/AdminDashboard";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
 
+import AiChatWidget from "./components/AiChatWidget";
+
+
+
 function App() {
   return (
     <AuthProvider>
@@ -37,42 +41,40 @@ function App() {
             }
           />
           <Route
-  path="/cart"
-  element={
-    <ProtectedRoute allowedRoles={["CUSTOMER"]}>
-      <CartPage />
-    </ProtectedRoute>
-  }
-/>
+            path="/cart"
+            element={
+              <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+                <CartPage />
+              </ProtectedRoute>
+            }
+          />
 
-<Route
-  path="/orders"
-  element={
-    <ProtectedRoute allowedRoles={["CUSTOMER"]}>
-      <OrderHistoryPage />
-    </ProtectedRoute>
-  }
-/>
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+                <OrderHistoryPage />
+              </ProtectedRoute>
+            }
+          />
 
-<Route
-  path="/payment/:orderId"
-  element={
-    <ProtectedRoute allowedRoles={["CUSTOMER"]}>
-      <PaymentPage />
-    </ProtectedRoute>
-  }
-/>
+          <Route
+            path="/payment/:orderId"
+            element={
+              <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+                <PaymentPage />
+              </ProtectedRoute>
+            }
+          />
 
-
-<Route
-  path="/tracking/:orderId"
-  element={
-    <ProtectedRoute allowedRoles={["CUSTOMER"]}>
-      <DeliveryTrackingPage />
-    </ProtectedRoute>
-  }
-/>
-
+          <Route
+            path="/tracking/:orderId"
+            element={
+              <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+                <DeliveryTrackingPage />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/register"
@@ -87,7 +89,10 @@ function App() {
             path="/customer"
             element={
               <ProtectedRoute allowedRoles={["CUSTOMER"]}>
-                <CustomerDashboard />
+                <>
+                  <CustomerDashboard />
+                  <AiChatWidget />
+                </>
               </ProtectedRoute>
             }
           />

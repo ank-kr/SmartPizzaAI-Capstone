@@ -19,6 +19,8 @@ import com.smartpizza.core.entity.OrderItem;
 import com.smartpizza.core.enums.DiscountType;
 import com.smartpizza.core.enums.OrderStatus;
 import com.smartpizza.core.enums.PaymentStatus;
+import com.smartpizza.core.event.OrderPlacedEvent;
+import com.smartpizza.core.kafka.KafkaEventProducer;
 import com.smartpizza.core.repository.CartItemRepository;
 import com.smartpizza.core.repository.CartRepository;
 import com.smartpizza.core.repository.CouponRepository;
@@ -44,6 +46,7 @@ public class OrderService {
 	private final CouponRepository couponRepository;
 	private final OrderRepository orderRepository;
 	private final OrderItemRepository orderItemRepository;
+	private final KafkaEventProducer kafkaEventProducer;
 
 	@Transactional // Ensures order placement is atomic (all DB ops succeed or rollback).
 	public OrderResponse placeOrder(PlaceOrderRequest request) {
@@ -89,6 +92,13 @@ public class OrderService {
 				.deliveryLongitude(request.getDeliveryLongitude()).orderTime(LocalDateTime.now()).build();
 
 		Order savedOrder = orderRepository.save(order);
+
+		OrderPlacedEvent orderPlacedEvent = OrderPlacedEvent.builder().orderId(savedOrder.getId())
+				.userId(savedOrder.getUserId()).finalAmount(savedOrder.getFinalAmount())
+				.orderStatus(savedOrder.getOrderStatus().name()).paymentStatus(savedOrder.getPaymentStatus().name())
+				.orderTime(savedOrder.getOrderTime()).build();
+
+		kafkaEventProducer.publishOrderPlacedEvent(orderPlacedEvent);
 
 		log.info("Order created successfully. orderId={}, userId={}, orderStatus={}, paymentStatus={}",
 				savedOrder.getId(), savedOrder.getUserId(), savedOrder.getOrderStatus(), savedOrder.getPaymentStatus());

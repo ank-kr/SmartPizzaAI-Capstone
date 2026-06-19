@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import MenuItemCard from "../components/MenuItemCard";
 import "../styles/customer-dashboard.css";
 
+
 function CustomerDashboard() {
   const { authUser } = useAuth();
   const navigate = useNavigate();
